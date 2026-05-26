@@ -308,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </span>`;
 
       const item = document.createElement('div');
-      item.className = 'stock-item';
+      item.className = 'stock-item watchlist-item';
       item.setAttribute('draggable', 'true');
       item.setAttribute('data-symbol', sym);
       item.style.cursor = 'pointer';
@@ -331,25 +331,13 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         
         <div class="stock-stats" style="flex: 3; flex-direction: row; justify-content: flex-end; align-items: center; gap: 10px;">
-          <div class="market-inputs" style="display: flex; align-items: center; gap: 4px;">
-            <input type="number" step="0.01" class="market-price-input" data-symbol="${sym}" value="${stock.price}" style="width: 76px; padding: 6px 10px; font-size: 12px; border-radius: 8px;">
-            <span style="font-size:11px; color:var(--text-muted);">TL</span>
-          </div>
+          <span style="font-weight: 600; font-size: 14px; color: var(--text-primary); margin-right: 4px;">
+            ${stock.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL
+          </span>
           
           <button class="close-sheet-btn remove-watchlist-btn" aria-label="Takip listesinden çıkar" style="width: 28px; height: 28px; font-size: 13px; color: var(--loss-color); background: rgba(244,63,94,0.05); border: 1px solid rgba(244,63,94,0.1);">✕</button>
         </div>
       `;
-      
-      // Fiyat inputu değiştiğinde kaydet
-      const priceInput = item.querySelector('.market-price-input');
-      priceInput.addEventListener('click', (e) => e.stopPropagation()); // Tıklama satıra geçmesin
-      priceInput.addEventListener('change', (e) => {
-        const newPrice = parseFloat(e.target.value);
-        if (!isNaN(newPrice) && newPrice > 0) {
-          BorsaStore.updatePrice(sym, newPrice);
-          populateDatalist();
-        }
-      });
 
       // Takip listesinden çıkarma butonu dinleyicisi
       const removeBtn = item.querySelector('.remove-watchlist-btn');
