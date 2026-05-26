@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Borsa Takip - Portföyüm</title>
+  <meta name="description" content="Hisselerinizin maliyetini, anlık kâr/zarar durumunu ve geçmiş işlemlerini kolayca takip edin.">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/app.css">
+  
+  <!-- Apple Web App Meta Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Borsa Takip">
+</head>
+<body>
+
+  <!-- App Header -->
+  <header>
+    <h1 id="app-logo">Borsa Takip</h1>
+    <button id="btn-simulate" class="sim-btn" aria-label="Piyasa fiyatlarını dalgalandır">
+      <span class="tab-icon">⚡</span>
+      <span>Fiyatları Dalgalandır</span>
+    </button>
+  </header>
+
+  <!-- Main View Screens Container -->
+  <main>
+    
+    <!-- SCREEN 1: PORTFOLIO (Home) -->
+    <section id="screen-portfolio" class="screen active">
+      <!-- Summary Card -->
+      <div class="card summary-card" id="portfolio-summary">
+        <div class="summary-label">Mevcut Portföy Değeri</div>
+        <div class="summary-value" id="summary-total-value">0.00 TL</div>
+        
+        <div class="summary-grid">
+          <div class="grid-item">
+            <span class="grid-label">Toplam Maliyet</span>
+            <span class="grid-value" id="summary-total-cost">0.00 TL</span>
+          </div>
+          <div class="grid-item">
+            <span class="grid-label">Toplam Kâr/Zarar</span>
+            <span class="badge" id="summary-total-profit">0.00 TL (%0)</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="section-title">
+        <h2>Aktif Pozisyonlar</h2>
+      </div>
+      
+      <!-- Holdings List -->
+      <div id="holdings-list">
+        <!-- Dynmically loaded stock items -->
+      </div>
+    </section>
+
+    <!-- SCREEN 2: ADD TRANSACTION -->
+    <section id="screen-add" class="screen">
+      <div class="card">
+        <h2 class="section-title">Yeni İşlem Ekle</h2>
+        
+        <form id="add-transaction-form" autocomplete="off">
+          
+          <!-- Buy/Sell Toggle -->
+          <div class="segmented-control">
+            <button type="button" id="btn-type-buy" class="active buy" data-type="BUY">Alış</button>
+            <button type="button" id="btn-type-sell" class="" data-type="SELL">Satış</button>
+            <button type="button" id="btn-type-init" class="" data-type="INITIAL">Başlangıç</button>
+          </div>
+          
+          <!-- Stock Symbol Selection -->
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <label for="input-symbol" style="margin-bottom: 0;">Hisse Kodu (Örn: THYAO)</label>
+              <span id="symbol-current-price-badge" class="badge" style="display: none; font-size: 11px; padding: 4px 10px; font-weight: 700; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: #ffffff; box-shadow: 0 0 12px rgba(99, 102, 241, 0.45); border-radius: 8px;">Güncel: -</span>
+            </div>
+            <input type="text" id="input-symbol" list="symbols-list" placeholder="Hisse kodu girin veya seçin..." required>
+            <datalist id="symbols-list">
+              <!-- Dynamically populated -->
+            </datalist>
+          </div>
+
+          <!-- Quantity -->
+          <div class="form-group">
+            <label for="input-quantity">Adet</label>
+            <input type="number" id="input-quantity" step="any" min="0.0001" placeholder="0.00" required>
+          </div>
+
+          <!-- Price -->
+          <div class="form-group">
+            <label for="input-price" id="label-price">Birim Fiyat (TL)</label>
+            <input type="number" id="input-price" step="0.01" min="0.01" placeholder="0.00 TL" required>
+          </div>
+
+          <!-- Date -->
+          <div class="form-group" id="form-group-date">
+            <label for="input-date">İşlem Tarihi</label>
+            <input type="date" id="input-date" required>
+          </div>
+
+          <button type="submit" class="btn-primary" id="btn-save-transaction">Hareketi Ekle</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- SCREEN 3: HISTORY -->
+    <section id="screen-history" class="screen">
+      <!-- Realized Summary -->
+      <div class="card">
+        <div class="summary-label">Gerçekleşmiş Kâr/Zarar</div>
+        <div class="summary-value" id="history-realized-profit" style="font-size: 26px; margin-bottom: 0;">0.00 TL</div>
+      </div>
+
+      <!-- Closed Positions List -->
+      <div class="section-title">
+        <h2>Kapanan Pozisyonlar</h2>
+      </div>
+      <div id="closed-list" style="margin-bottom: 24px;">
+        <!-- Dynamically loaded closed positions -->
+      </div>
+
+      <!-- Chronological Movements Log -->
+      <div class="section-title">
+        <h2>Tüm Hareket Geçmişi</h2>
+      </div>
+      <div id="history-log" class="history-list">
+        <!-- Dynamically loaded chronological log -->
+      </div>
+      
+      <!-- Master Reset Portfolio Button -->
+      <button id="btn-reset-portfolio" class="btn-primary" style="margin-top: 30px; background: rgba(244, 63, 94, 0.08); color: var(--loss-color); border: 1px solid rgba(244, 63, 94, 0.2); box-shadow: none;">TÜM PORTFÖYÜ SIFIRLA</button>
+    </section>
+
+    <!-- SCREEN 4: WATCHLIST -->
+    <section id="screen-watchlist" class="screen">
+      <div class="card">
+        <h2 class="section-title">Takip Listem</h2>
+        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">
+          Takip etmek istediğiniz hisseleri ekleyebilir, fiyatlarını güncelleyebilir veya çıkarabilirsiniz.
+        </p>
+        
+        <!-- Add Stock to Watchlist -->
+        <form id="watchlist-add-form" autocomplete="off" style="display: flex; gap: 8px; margin-bottom: 24px; position: relative;">
+          <input type="text" id="input-watchlist-symbol" placeholder="Hisse veya şirket adı arayın..." style="flex: 2; padding: 10px 14px; border-radius: 12px;" required>
+          <div id="watchlist-suggestions" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #161821; border: 1px solid var(--panel-border); border-radius: 12px; max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 10px 30px rgba(0,0,0,0.5); padding: 4px; gap: 4px; flex-direction: column;">
+          </div>
+          <button type="submit" class="btn-primary" style="flex: 1; padding: 10px 14px; border-radius: 12px; font-size: 13px; box-shadow: none;">Ekle (+)</button>
+        </form>
+        
+        <div id="watchlist-list" style="display: flex; flex-direction: column; gap: 12px;">
+          <!-- Dynamically loaded custom watchlist stocks -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Navigation Tab Bar -->
+  <nav class="tab-bar">
+    <button class="tab-item active" data-target="screen-portfolio">
+      <span class="tab-icon">💼</span>
+      <span class="tab-label">Portföy</span>
+    </button>
+    <button class="tab-item" data-target="screen-add">
+      <span class="tab-icon">➕</span>
+      <span class="tab-label">Ekle</span>
+    </button>
+    <button class="tab-item" data-target="screen-history">
+      <span class="tab-icon">📜</span>
+      <span class="tab-label">Geçmiş</span>
+    </button>
+    <button class="tab-item" data-target="screen-watchlist">
+      <span class="tab-icon">📈</span>
+      <span class="tab-label">Takip Listesi</span>
+    </button>
+  </nav>
+
+  <!-- Detay Modalı (Bottom Sheet) -->
+  <div id="details-overlay" class="modal-overlay"></div>
+  <div id="details-sheet" class="bottom-sheet">
+    <div class="bottom-sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title" id="details-sheet-title">THYAO Detayları</div>
+      <button class="close-sheet-btn" id="btn-close-sheet" aria-label="Kapat">✕</button>
+    </div>
+    
+    <div class="card" style="padding: 16px; margin-bottom: 20px;">
+      <div class="summary-grid" style="border-top: none; padding-top: 0;">
+        <div class="grid-item">
+          <span class="grid-label">Ortalama Maliyet</span>
+          <span class="grid-value" id="sheet-average-cost">0.00 TL</span>
+        </div>
+        <div class="grid-item">
+          <span class="grid-label">Net Pozisyon</span>
+          <span class="grid-value" id="sheet-net-quantity">0 Adet</span>
+        </div>
+      </div>
+      <div class="summary-grid" style="margin-top: 10px;">
+        <div class="grid-item">
+          <span class="grid-label">Güncel Fiyat</span>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span class="grid-value" id="sheet-current-price">0.00 TL</span>
+            <span id="sheet-current-price-change" style="font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 6px; display: none;"></span>
+          </div>
+        </div>
+        <div class="grid-item">
+          <span class="grid-label">Güncel Değer</span>
+          <span class="grid-value" id="sheet-current-value">0.00 TL</span>
+        </div>
+      </div>
+      <div class="summary-grid" style="margin-top: 10px;">
+        <div class="grid-item" style="grid-column: span 2; display: flex; flex-direction: row; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.02); padding: 10px 14px; border-radius: 12px; border: 1px solid var(--panel-border);">
+          <span class="grid-label" style="margin-bottom: 0; font-weight: 600; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px;">Net Kâr/Zarar</span>
+          <span class="badge" id="sheet-net-profit" style="font-size: 13px; padding: 6px 12px; font-weight: 700; border-radius: 10px;">0.00 TL</span>
+        </div>
+      </div>
+      <!-- Hızlı Al/Sat Butonları -->
+      <div style="display: flex; gap: 8px; border-top: 1px solid var(--panel-border); padding-top: 12px; margin-top: 12px;">
+        <button id="sheet-btn-buy" class="btn-primary" style="flex: 1; padding: 10px; background: var(--profit-color); color: #000; border-radius: 12px; font-weight: 700; font-size: 13px; box-shadow: none;">HIZLI AL</button>
+        <button id="sheet-btn-sell" class="btn-primary" style="flex: 1; padding: 10px; background: var(--loss-color); color: #fff; border-radius: 12px; font-weight: 700; font-size: 13px; box-shadow: none;">HIZLI SAT</button>
+      </div>
+    </div>
+
+    <div class="section-title">
+      <h3>İşlem Hareketleri</h3>
+    </div>
+    <div id="sheet-movements-list" class="history-list">
+      <!-- Dynamically loaded movements of selected stock -->
+    </div>
+  </div>
+
+  <!-- Loading Scripts -->
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+  
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(reg => console.log('Service Worker Kaydedildi.', reg.scope))
+          .catch(err => console.error('Service Worker Kayıt Hatası:', err));
+      });
+    }
+  </script>
+
+</body>
+</html>

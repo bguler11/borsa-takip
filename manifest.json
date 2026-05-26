@@ -1,0 +1,22 @@
+{
+  "short_name": "BorsaTakip",
+  "name": "Borsa Takip Portföyüm",
+  "description": "Gün sonu hisse fiyatlarıyla kâr/zarar ve portföy takibi yapan modern web uygulaması.",
+  "icons": [
+    {
+      "src": "assets/icons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "assets/icons/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "index.html",
+  "background_color": "#0d0e12",
+  "theme_color": "#1a1c24",
+  "display": "standalone",
+  "orientation": "portrait"
+}
