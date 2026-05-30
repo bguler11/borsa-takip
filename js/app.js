@@ -42,38 +42,44 @@ document.addEventListener('DOMContentLoaded', () => {
   const labelPrice = document.getElementById('label-price');
   const formGroupDate = document.getElementById('form-group-date');
 
-  btnTypeBuy.addEventListener('click', () => {
-    transactionType = 'BUY';
-    btnTypeBuy.classList.add('active', 'buy');
-    btnTypeSell.classList.remove('active', 'sell');
-    btnTypeInit.classList.remove('active', 'buy');
-    if (labelPrice) labelPrice.innerText = 'Birim Fiyat (TL)';
-    if (formGroupDate) formGroupDate.style.display = 'block';
-    const dateInput = document.getElementById('input-date');
-    if (dateInput) dateInput.setAttribute('required', 'true');
-  });
+  if (btnTypeBuy) {
+    btnTypeBuy.addEventListener('click', () => {
+      transactionType = 'BUY';
+      btnTypeBuy.classList.add('active', 'buy');
+      if (btnTypeSell) btnTypeSell.classList.remove('active', 'sell');
+      if (btnTypeInit) btnTypeInit.classList.remove('active', 'buy');
+      if (labelPrice) labelPrice.innerText = 'Birim Fiyat (TL)';
+      if (formGroupDate) formGroupDate.style.display = 'block';
+      const dateInput = document.getElementById('input-date');
+      if (dateInput) dateInput.setAttribute('required', 'true');
+    });
+  }
 
-  btnTypeSell.addEventListener('click', () => {
-    transactionType = 'SELL';
-    btnTypeSell.classList.add('active', 'sell');
-    btnTypeBuy.classList.remove('active', 'buy');
-    btnTypeInit.classList.remove('active', 'buy');
-    if (labelPrice) labelPrice.innerText = 'Birim Fiyat (TL)';
-    if (formGroupDate) formGroupDate.style.display = 'block';
-    const dateInput = document.getElementById('input-date');
-    if (dateInput) dateInput.setAttribute('required', 'true');
-  });
+  if (btnTypeSell) {
+    btnTypeSell.addEventListener('click', () => {
+      transactionType = 'SELL';
+      btnTypeSell.classList.add('active', 'sell');
+      if (btnTypeBuy) btnTypeBuy.classList.remove('active', 'buy');
+      if (btnTypeInit) btnTypeInit.classList.remove('active', 'buy');
+      if (labelPrice) labelPrice.innerText = 'Birim Fiyat (TL)';
+      if (formGroupDate) formGroupDate.style.display = 'block';
+      const dateInput = document.getElementById('input-date');
+      if (dateInput) dateInput.setAttribute('required', 'true');
+    });
+  }
 
-  btnTypeInit.addEventListener('click', () => {
-    transactionType = 'INITIAL';
-    btnTypeInit.classList.add('active', 'buy');
-    btnTypeBuy.classList.remove('active', 'buy');
-    btnTypeSell.classList.remove('active', 'sell');
-    if (labelPrice) labelPrice.innerText = 'Ortalama Maliyet (TL)';
-    if (formGroupDate) formGroupDate.style.display = 'none';
-    const dateInput = document.getElementById('input-date');
-    if (dateInput) dateInput.removeAttribute('required');
-  });
+  if (btnTypeInit) {
+    btnTypeInit.addEventListener('click', () => {
+      transactionType = 'INITIAL';
+      btnTypeInit.classList.add('active', 'buy');
+      if (btnTypeBuy) btnTypeBuy.classList.remove('active', 'buy');
+      if (btnTypeSell) btnTypeSell.classList.remove('active', 'sell');
+      if (labelPrice) labelPrice.innerText = 'Ortalama Maliyet (TL)';
+      if (formGroupDate) formGroupDate.style.display = 'none';
+      const dateInput = document.getElementById('input-date');
+      if (dateInput) dateInput.removeAttribute('required');
+    });
+  }
 
   // Tarih inputunu bugüne ayarla
   const dateInput = document.getElementById('input-date');
@@ -190,7 +196,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- HAREKET EKLEME FORMU ---
   const addForm = document.getElementById('add-transaction-form');
-  addForm.addEventListener('submit', (e) => {
+  if (addForm) {
+    addForm.addEventListener('submit', (e) => {
     e.preventDefault();
     
     const symbol = document.getElementById('input-symbol').value.toUpperCase().trim();
@@ -247,6 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const portfolioTab = document.querySelector('.tab-bar .tab-item[data-target="screen-portfolio"]');
     if (portfolioTab) portfolioTab.click();
   });
+}
 
   // --- PORTFÖYÜ LİSTELEME ---
   const holdingsList = document.getElementById('holdings-list');
@@ -426,17 +434,20 @@ document.addEventListener('DOMContentLoaded', () => {
     renderWatchlist();
     
     // Özet kartını güncelle
-    sumTotalValue.innerText = `${data.summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL`;
-    sumTotalCost.innerText = `${data.summary.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL`;
+    if (sumTotalValue) sumTotalValue.innerText = `${data.summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL`;
+    if (sumTotalCost) sumTotalCost.innerText = `${data.summary.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL`;
     
     const profitVal = data.summary.unrealizedProfit;
     const profitPct = data.summary.unrealizedProfitPercent;
     
-    sumTotalProfit.className = `badge ${profitVal >= 0 ? 'profit' : 'loss'}`;
-    sumTotalProfit.innerText = `${profitVal >= 0 ? '+' : ''}${profitVal.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL (${profitVal >= 0 ? '+' : ''}${profitPct.toFixed(2)}%)`;
+    if (sumTotalProfit) {
+      sumTotalProfit.className = `badge ${profitVal >= 0 ? 'profit' : 'loss'}`;
+      sumTotalProfit.innerText = `${profitVal >= 0 ? '+' : ''}${profitVal.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL (${profitVal >= 0 ? '+' : ''}${profitPct.toFixed(2)}%)`;
+    }
 
     // Portföy listesini oluştur
-    holdingsList.innerHTML = '';
+    if (holdingsList) {
+      holdingsList.innerHTML = '';
     
     if (data.holdings.length === 0) {
       holdingsList.innerHTML = `
@@ -677,8 +688,8 @@ document.addEventListener('DOMContentLoaded', () => {
     sheet.classList.remove('active');
   }
 
-  overlay.addEventListener('click', closeDetailsSheet);
-  btnCloseSheet.addEventListener('click', closeDetailsSheet);
+  if (overlay) overlay.addEventListener('click', closeDetailsSheet);
+  if (btnCloseSheet) btnCloseSheet.addEventListener('click', closeDetailsSheet);
 
   // --- GEÇMİŞ EKRANI ---
   const closedList = document.getElementById('closed-list');
