@@ -2,6 +2,40 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
+  <script>
+    window.addEventListener('error', function(e) {
+      var div = document.createElement('div');
+      div.style.position = 'fixed';
+      div.style.top = '0';
+      div.style.left = '0';
+      div.style.width = '100%';
+      div.style.background = '#f43f5e';
+      div.style.color = '#fff';
+      div.style.padding = '20px';
+      div.style.zIndex = '999999';
+      div.style.fontSize = '14px';
+      div.style.fontFamily = 'monospace';
+      div.style.whiteSpace = 'pre-wrap';
+      div.innerHTML = '<strong>Hata:</strong> ' + e.message + '<br>Dosya: ' + e.filename + '<br>Satır: ' + e.lineno;
+      document.body.appendChild(div);
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+      var div = document.createElement('div');
+      div.style.position = 'fixed';
+      div.style.top = '0';
+      div.style.left = '0';
+      div.style.width = '100%';
+      div.style.background = '#f43f5e';
+      div.style.color = '#fff';
+      div.style.padding = '20px';
+      div.style.zIndex = '999999';
+      div.style.fontSize = '14px';
+      div.style.fontFamily = 'monospace';
+      div.style.whiteSpace = 'pre-wrap';
+      div.innerHTML = '<strong>Söz Rejeksiyon Hatası (Promise Rejection):</strong><br>' + (e.reason ? (e.reason.message || e.reason) : 'Bilinmeyen Hata');
+      document.body.appendChild(div);
+    });
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Borsa Takip - Portföyüm</title>
   <meta name="description" content="Hisselerinizin maliyetini, anlık kâr/zarar durumunu ve geçmiş işlemlerini kolayca takip edin.">
@@ -18,9 +52,9 @@
   <!-- App Header -->
   <header>
     <h1 id="app-logo">Borsa Takip</h1>
-    <button id="btn-simulate" class="sim-btn" aria-label="Piyasa fiyatlarını dalgalandır">
-      <span class="tab-icon">⚡</span>
-      <span>Fiyatları Dalgalandır</span>
+    <button id="btn-refresh" class="sim-btn" aria-label="Gerçek zamanlı fiyatları (15 dk gecikmeli) Yahoo Finance'ten çek">
+      <span class="tab-icon">🔄</span>
+      <span id="btn-refresh-text">Fiyatları Güncelle</span>
     </button>
   </header>
 

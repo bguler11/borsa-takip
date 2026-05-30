@@ -152,17 +152,127 @@ const BorsaStore = {
     localStorage.setItem('bt_prices', JSON.stringify(prices));
   },
 
-  // 6. Fiyatları Rastgele Simüle Et (Piyasa Dalgalanması)
-  simulatePrices() {
-    const prices = this.getPrices();
-    for (const symbol in prices) {
-      const oldPrice = prices[symbol].price;
-      const changePercent = (Math.random() * 6 - 3) / 100; // -3% ile +3% arası değişim
-      prices[symbol].prevPrice = oldPrice;
-      prices[symbol].price = parseFloat((oldPrice * (1 + changePercent)).toFixed(2));
+  // 6. Gerçek Fiyatları Çek (Google Sheets üzerinden - BIST Verileri)
+  async fetchLivePrices() {
+    const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTm4oIUcAf1sj3qRYKKJUYtLpsv_gj8KboGgoWRVjk-cA_B40-1rlavwXYHfgpeuDpf_KHhomlLOt1O/pub?output=csv&t=" + Date.now();
+    
+    try {
+      const response = await fetch(sheetUrl);
+      if (!response.ok) {
+        throw new Error(`Google Sheets fetch hatası: ${response.statusText}`);
+      }
+      
+      const csvText = await response.text();
+      if (!csvText || csvText.trim().length === 0) {
+        throw new Error("Boş veri alındı.");
+      }
+
+      const prices = this.getPrices();
+      let updated = false;
+
+      // Satırları ayır
+      const lines = csvText.split(/\r?\n/);
+      
+      for (const line of lines) {
+        if (!line.trim()) continue;
+
+        // Hem virgül hem de noktalı virgül seperatörünü destekle (TR locale için)
+        let delimiter = ",";
+        if (line.includes(";")) {
+          delimiter = ";";
+        }
+
+        // Tırnak işaretlerini dikkate alarak sütunları ayıran güvenli fonksiyon
+        const parseCsvLine = (text, delim) => {
+          const result = [];
+          let current = "";
+          let inQuotes = false;
+          for (let i = 0; i < text.length; i++) {
+            const char = text[i];
+            if (char === '"' || char === "'") {
+              inQuotes = !inQuotes;
+            } else if (char === delim && !inQuotes) {
+              result.push(current.trim());
+              current = "";
+            } else {
+              current += char;
+            }
+          }
+          result.push(current.trim());
+          return result.map(col => col.replace(/^["']|["']$/g, "").trim());
+        };
+
+        const columns = parseCsvLine(line, delimiter);
+        
+        if (columns.length < 2) continue;
+
+        // İlk kolon semboldür (örn: "THYAO", "THYAO.IS" vb.)
+        let symbol = columns[0].toUpperCase();
+        // Eğer ".IS" uzantısı varsa temizle
+        if (symbol.endsWith(".IS")) {
+          symbol = symbol.substring(0, symbol.length - 3);
+        }
+
+        // Sembol geçerli bir BIST sembolü mü kontrol et veya portfolio/watchlist'te var mı
+        const watchlist = this.getWatchlist();
+        const portfolio = this.getPortfolio().holdings;
+        const portfolioSymbols = portfolio.map(p => p.symbol);
+        
+        const isTargetSymbol = watchlist.includes(symbol) || portfolioSymbols.includes(symbol) || ALL_BIST100_STOCKS[symbol];
+        if (!isTargetSymbol) continue;
+
+        // Fiyat ve Önceki Kapanış bilgilerini ayıkla
+        // Google Finance bazen TR locale sayı formatı (örn: 312,50 veya 312.50) döndürebilir
+        const parseNumeric = (str) => {
+          if (!str) return null;
+          // Nokta ve virgül durumlarını normalize et
+          let normalized = str.replace(/\s/g, "");
+          if (normalized.includes(",") && normalized.includes(".")) {
+            // Binlik ayırıcı nokta, ondalık virgül ise (örn: 1.250,50)
+            normalized = normalized.replace(/\./g, "").replace(",", ".");
+          } else if (normalized.includes(",")) {
+            // Sadece virgül varsa ondalık ayırıcıdır (örn: 312,50)
+            normalized = normalized.replace(",", ".");
+          }
+          const num = parseFloat(normalized);
+          return isNaN(num) ? null : num;
+        };
+
+        const currentPrice = parseNumeric(columns[1]);
+        // Önceki kapanış 3. kolonda olabilir (isteğe bağlı)
+        const prevPrice = columns.length >= 3 ? parseNumeric(columns[2]) : null;
+
+        if (currentPrice !== null) {
+          if (prices[symbol]) {
+            const hasPriceChanged = prices[symbol].price !== currentPrice;
+            const hasPrevChanged = prevPrice !== null && prices[symbol].prevPrice !== prevPrice;
+            
+            if (hasPriceChanged || hasPrevChanged) {
+              prices[symbol].prevPrice = prevPrice !== null ? prevPrice : (hasPriceChanged ? prices[symbol].price : prices[symbol].prevPrice);
+              prices[symbol].price = currentPrice;
+              updated = true;
+            }
+          } else {
+            const stockName = ALL_BIST100_STOCKS[symbol] || `${symbol} Hisse Senedi`;
+            prices[symbol] = {
+              name: stockName,
+              price: currentPrice,
+              prevPrice: prevPrice !== null ? prevPrice : currentPrice
+            };
+            updated = true;
+          }
+        }
+      }
+
+      if (updated) {
+        localStorage.setItem('bt_prices', JSON.stringify(prices));
+        return prices;
+      }
+      return prices; // Değişiklik olmasa bile mevcut fiyatları dönelim ki UI güncellenebilsin
+    } catch (error) {
+      console.error("Canlı fiyatlar güncellenirken hata oluştu:", error);
+      return null;
     }
-    localStorage.setItem('bt_prices', JSON.stringify(prices));
-    return prices;
   },
 
   // 7. Portföy ve Kâr/Zarar Hesaplama

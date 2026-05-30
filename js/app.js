@@ -830,38 +830,72 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- FİYATLARI SİMÜLE ET BUTONU ---
-  const btnSimulate = document.getElementById('btn-simulate');
-  btnSimulate.addEventListener('click', () => {
-    BorsaStore.simulatePrices();
-    populateDatalist();
-    
-    // Hangi ekrandaysak orayı tazele
-    const activeScreen = document.querySelector('main .screen.active');
-    if (activeScreen) {
-      if (activeScreen.id === 'screen-portfolio') {
-        renderPortfolio();
-      } else if (activeScreen.id === 'screen-history') {
-        renderHistory();
-      } else if (activeScreen.id === 'screen-watchlist') {
-        renderWatchlist();
+  // --- FİYATLARI GÜNCELLE BUTONU (YAHOO FINANCE) ---
+  const btnRefresh = document.getElementById('btn-refresh');
+  if (btnRefresh) {
+    btnRefresh.addEventListener('click', async () => {
+      // Kısa bir efekt ve loading durumu
+      btnRefresh.style.transform = 'scale(0.95)';
+      const originalText = document.getElementById('btn-refresh-text').innerText;
+      document.getElementById('btn-refresh-text').innerText = 'Güncelleniyor...';
+      btnRefresh.style.opacity = '0.7';
+      btnRefresh.style.pointerEvents = 'none';
+      
+      try {
+        await BorsaStore.fetchLivePrices();
+        populateDatalist();
+        
+        // Hangi ekrandaysak orayı tazele
+        const activeScreen = document.querySelector('main .screen.active');
+        if (activeScreen) {
+          if (activeScreen.id === 'screen-portfolio') {
+            renderPortfolio();
+          } else if (activeScreen.id === 'screen-history') {
+            renderHistory();
+          } else if (activeScreen.id === 'screen-watchlist') {
+            renderWatchlist();
+          }
+        }
+        
+        // Açık olan Bottom Sheet varsa onu da güncelle
+        if (sheet.classList.contains('active')) {
+          const activeSymbol = sheetTitle.innerText.split(' ')[0];
+          openDetailsSheet(activeSymbol);
+        }
+      } catch (err) {
+        console.error("Güncelleme hatası", err);
+        alert("Fiyatlar güncellenirken bir hata oluştu.");
+      } finally {
+        setTimeout(() => {
+          btnRefresh.style.transform = 'none';
+          document.getElementById('btn-refresh-text').innerText = originalText;
+          btnRefresh.style.opacity = '1';
+          btnRefresh.style.pointerEvents = 'auto';
+        }, 100);
       }
-    }
-    
-    // Açık olan Bottom Sheet varsa onu da güncelle
-    if (sheet.classList.contains('active')) {
-      const activeSymbol = sheetTitle.innerText.split(' ')[0]; // Örn "THYAO Detayları"
-      openDetailsSheet(activeSymbol);
-    }
-
-    // Kısa bir efekt
-    btnSimulate.style.transform = 'scale(0.95)';
-    setTimeout(() => {
-      btnSimulate.style.transform = 'none';
-    }, 100);
-  });
+    });
+  }
 
   // --- BAŞLANGIÇ YÜKLEMESİ ---
   populateDatalist();
   renderPortfolio();
+  
+  // Arka planda gerçek fiyatları çek
+  setTimeout(async () => {
+    try {
+      const updatedPrices = await BorsaStore.fetchLivePrices();
+      if (updatedPrices) {
+        populateDatalist();
+        const activeScreen = document.querySelector('main .screen.active');
+        if (activeScreen && activeScreen.id === 'screen-portfolio') renderPortfolio();
+        if (activeScreen && activeScreen.id === 'screen-watchlist') renderWatchlist();
+        if (sheet.classList.contains('active')) {
+          const activeSymbol = sheetTitle.innerText.split(' ')[0];
+          openDetailsSheet(activeSymbol);
+        }
+      }
+    } catch (e) {
+      console.warn("Otomatik fiyat güncellemesi başarısız:", e);
+    }
+  }, 1000); // UI yüklendikten 1 saniye sonra çek
 });

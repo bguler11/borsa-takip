@@ -1,4 +1,4 @@
-const CACHE_NAME = 'borsa-takip-v1';
+const CACHE_NAME = 'borsa-takip-v2';
 const ASSETS = [
   'index.html',
   'css/app.css',
