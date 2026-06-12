@@ -1,5 +1,99 @@
 // Borsa Takip PWA - Arayüz ve Kontrol Katmanı (app.js)
 
+window.showConfirmModal = function(message, onConfirm) {
+  const overlay = document.getElementById('confirm-modal-overlay');
+  const modal = document.getElementById('confirm-modal');
+  const msgEl = document.getElementById('confirm-modal-message');
+  const btnOk = document.getElementById('btn-confirm-ok');
+  const btnCancel = document.getElementById('btn-confirm-cancel');
+
+  if (!modal || !overlay) {
+    if (confirm(message)) onConfirm();
+    return;
+  }
+  
+  msgEl.innerText = message;
+  overlay.classList.add('active');
+  modal.style.display = 'flex';
+  
+  // Trigger reflow
+  void modal.offsetWidth;
+  
+  modal.style.opacity = '1';
+  modal.style.transform = 'translate(-50%, -50%) scale(1)';
+
+  const closeHandler = () => {
+    modal.style.opacity = '0';
+    modal.style.transform = 'translate(-50%, -50%) scale(0.95)';
+    setTimeout(() => {
+      modal.style.display = 'none';
+      overlay.classList.remove('active');
+    }, 300);
+    cleanUp();
+  };
+
+  const confirmHandler = () => {
+    closeHandler();
+    onConfirm();
+  };
+
+  const cleanUp = () => {
+    btnCancel.removeEventListener('click', closeHandler);
+    overlay.removeEventListener('click', closeHandler);
+    btnOk.removeEventListener('click', confirmHandler);
+  };
+
+  btnCancel.addEventListener('click', closeHandler);
+  overlay.addEventListener('click', closeHandler);
+  btnOk.addEventListener('click', confirmHandler);
+};
+
+window.showToast = function(message, type = 'success') {
+  const container = document.getElementById('toast-container');
+  if (!container) {
+    alert(message);
+    return;
+  }
+
+  const toast = document.createElement('div');
+  const isSuccess = type === 'success';
+  const bgColor = isSuccess ? 'var(--profit-color)' : 'var(--loss-color)';
+  const icon = isSuccess ? '✅' : '⚠️';
+  
+  toast.style.background = 'linear-gradient(135deg, rgba(22, 24, 33, 0.98) 0%, rgba(18, 20, 28, 0.98) 100%)';
+  toast.style.borderLeft = `4px solid ${bgColor}`;
+  toast.style.color = 'var(--text-primary)';
+  toast.style.padding = '12px 16px';
+  toast.style.borderRadius = '12px';
+  toast.style.boxShadow = '0 10px 30px rgba(0,0,0,0.4)';
+  toast.style.display = 'flex';
+  toast.style.alignItems = 'center';
+  toast.style.gap = '12px';
+  toast.style.fontSize = '14px';
+  toast.style.fontWeight = '500';
+  toast.style.opacity = '0';
+  toast.style.transform = 'translateY(-20px)';
+  toast.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+  toast.style.backdropFilter = 'blur(10px)';
+  
+  toast.innerHTML = `<span style="font-size: 18px;">${icon}</span> <span style="line-height: 1.4;">${message}</span>`;
+  
+  container.appendChild(toast);
+  
+  requestAnimationFrame(() => {
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateY(0)';
+  });
+  
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-20px)';
+    setTimeout(() => {
+      if (toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 300);
+  }, 3000);
+};
+
 function initializeApp() {
   // --- EKRAN YÖNLENDİRME (TAB ROUTING) ---
   const tabs = document.querySelectorAll('.tab-bar .tab-item');
@@ -206,7 +300,7 @@ function initializeApp() {
     const date = document.getElementById('input-date').value;
 
     if (!symbol || isNaN(quantity) || isNaN(price)) {
-      alert('Lütfen tüm alanları doğru şekilde doldurun!');
+      window.showToast('Lütfen tüm alanları doğru şekilde doldurun!', 'error');
       return;
     }
 
@@ -217,7 +311,7 @@ function initializeApp() {
       const heldQuantity = currentHolding ? currentHolding.quantity : 0;
       
       if (quantity > heldQuantity) {
-        alert(`Yetersiz bakiye! Elinizde sadece ${heldQuantity} adet ${symbol} bulunuyor.`);
+        window.showToast(`Yetersiz bakiye! Elinizde sadece ${heldQuantity} adet ${symbol} bulunuyor.`, 'error');
         return;
       }
     }
@@ -250,7 +344,7 @@ function initializeApp() {
     if (priceBadge) priceBadge.style.display = 'none';
     
     // İşlem ekleme modundan çıkarıp portföye yönlendir
-    alert('İşlem başarıyla eklendi!');
+    window.showToast('İşlem başarıyla eklendi!', 'success');
     const portfolioTab = document.querySelector('.tab-bar .tab-item[data-target="screen-portfolio"]');
     if (portfolioTab) portfolioTab.click();
   });
@@ -351,11 +445,11 @@ function initializeApp() {
       const removeBtn = item.querySelector('.remove-watchlist-btn');
       removeBtn.addEventListener('click', (e) => {
         e.stopPropagation(); // Tıklama satıra geçmesin
-        if (confirm(`${sym} hissesini takip listenizden çıkarmak istiyor musunuz?`)) {
+        window.showConfirmModal(`${sym} hissesini takip listenizden çıkarmak istiyor musunuz?`, () => {
           BorsaStore.removeFromWatchlist(sym);
           populateDatalist();
           renderWatchlist();
-        }
+        });
       });
       
       // Tıklanınca Ekle sekmesine geçip hisseyi ve fiyatı otomatik doldur
@@ -613,16 +707,43 @@ function initializeApp() {
         }
 
         mItem.innerHTML = `
-          <div class="hist-left">
-            <span class="hist-type-${typeClass}">${typeText}</span>
-            <span class="hist-meta">${dateText}</span>
+          <div style="display:flex; flex:1; justify-content:space-between; align-items:center;">
+            <div class="hist-left">
+              <span class="hist-type-${typeClass}">${typeText}</span>
+              <span class="hist-meta">${dateText}</span>
+            </div>
+            <div class="hist-right">
+              <span class="hist-price">${move.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL</span>
+              <span class="hist-meta">${move.quantity.toLocaleString('tr-TR')} Adet</span>
+              ${profitText}
+            </div>
           </div>
-          <div class="hist-right">
-            <span class="hist-price">${move.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL</span>
-            <span class="hist-meta">${move.quantity.toLocaleString('tr-TR')} Adet</span>
-            ${profitText}
-          </div>
+          <button class="delete-tx-btn" data-id="${move.id}" aria-label="İşlemi Sil" title="İşlemi Sil" style="background:none; border:none; color:var(--loss-color); cursor:pointer; margin-left:12px; padding:4px; display:flex; align-items:center; justify-content:center;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              <line x1="10" y1="11" x2="10" y2="17"></line>
+              <line x1="14" y1="11" x2="14" y2="17"></line>
+            </svg>
+          </button>
         `;
+        
+        const delBtn = mItem.querySelector('.delete-tx-btn');
+        if (delBtn) {
+          delBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            window.showConfirmModal('Bu işlemi silmek istediğinizden emin misiniz?', () => {
+              BorsaStore.deleteTransaction(move.id);
+              openDetailsSheet(symbol);
+              renderPortfolio();
+              const activeScreen = document.querySelector('main .screen.active');
+              if (activeScreen && activeScreen.id === 'screen-history') {
+                renderHistory();
+              }
+            });
+          });
+        }
+
         sheetMovementsList.appendChild(mItem);
       });
     }
@@ -799,15 +920,43 @@ function initializeApp() {
         }
 
         wrapper.innerHTML = `
-          <div class="hist-left">
-            <span class="hist-type-${typeClass}">${typeText}</span>
-            <span class="hist-meta">${dateText}</span>
+          <div style="display:flex; flex:1; justify-content:space-between; align-items:center;">
+            <div class="hist-left">
+              <span class="hist-type-${typeClass}">${typeText}</span>
+              <span class="hist-meta">${dateText}</span>
+            </div>
+            <div class="hist-right" style="display:flex; flex-direction:column; align-items:flex-end;">
+              <span class="hist-price">${tx.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL</span>
+              <span class="hist-meta">${tx.quantity.toLocaleString('tr-TR')} Adet</span>
+            </div>
           </div>
-          <div class="hist-right" style="display:flex; flex-direction:column; align-items:flex-end;">
-            <span class="hist-price">${tx.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL</span>
-            <span class="hist-meta">${tx.quantity.toLocaleString('tr-TR')} Adet</span>
-          </div>
+          <button class="delete-tx-btn" data-id="${tx.id}" aria-label="İşlemi Sil" title="İşlemi Sil" style="background:none; border:none; color:var(--loss-color); cursor:pointer; margin-left:12px; padding:4px; display:flex; align-items:center; justify-content:center;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              <line x1="10" y1="11" x2="10" y2="17"></line>
+              <line x1="14" y1="11" x2="14" y2="17"></line>
+            </svg>
+          </button>
         `;
+        
+        const delBtn = wrapper.querySelector('.delete-tx-btn');
+        if (delBtn) {
+          delBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            window.showConfirmModal('Bu işlemi silmek istediğinizden emin misiniz?', () => {
+              BorsaStore.deleteTransaction(tx.id);
+              renderHistory();
+              renderPortfolio();
+              const sheet = document.getElementById('details-sheet');
+              const sheetTitle = document.getElementById('details-sheet-title');
+              if (sheet && sheet.classList.contains('active') && sheetTitle) {
+                const activeSymbol = sheetTitle.innerText.split(' ')[0];
+                openDetailsSheet(activeSymbol);
+              }
+            });
+          });
+        }
         
         item.appendChild(wrapper);
         historyLog.appendChild(item);
@@ -819,12 +968,12 @@ function initializeApp() {
   const btnResetPortfolio = document.getElementById('btn-reset-portfolio');
   if (btnResetPortfolio) {
     btnResetPortfolio.addEventListener('click', () => {
-      if (confirm('DİKKAT! Tüm alım-satım hareketleriniz kalıcı olarak silinecek ve portföyünüz tamamen sıfırlanacaktır. Bu işlem geri alınamaz. Sıfırlamak istediğinizden emin misiniz?')) {
+      window.showConfirmModal('DİKKAT! Tüm alım-satım hareketleriniz kalıcı olarak silinecek ve portföyünüz tamamen sıfırlanacaktır. Bu işlem geri alınamaz. Sıfırlamak istediğinizden emin misiniz?', () => {
         localStorage.removeItem('bt_transactions');
         renderHistory();
         renderPortfolio();
-        alert('Portföyünüz başarıyla sıfırlandı!');
-      }
+        window.showToast('Portföyünüz başarıyla sıfırlandı!', 'success');
+      });
     });
   }
 
@@ -838,7 +987,7 @@ function initializeApp() {
       
       const bist100 = BorsaStore.ALL_BIST100_STOCKS;
       if (!bist100[symbol]) {
-        alert('Geçersiz Hisse Kodu! Lütfen listeden önerilen bir BIST100 hissesi seçin.');
+        window.showToast('Geçersiz Hisse Kodu! Lütfen listeden önerilen bir BIST100 hissesi seçin.', 'error');
         return;
       }
 
@@ -885,7 +1034,7 @@ function initializeApp() {
         }
       } catch (err) {
         console.error("Güncelleme hatası", err);
-        alert("Fiyatlar güncellenirken bir hata oluştu.");
+        window.showToast("Fiyatlar güncellenirken bir hata oluştu.", "error");
       } finally {
         setTimeout(() => {
           btnRefresh.style.transform = 'none';
