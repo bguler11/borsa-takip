@@ -444,3 +444,179 @@ const BorsaStore = {
 };
 
 window.BorsaStore = BorsaStore;
+
+// ---------------------------------------------------------------------------
+// YEDEKLEME (BACKUP) - Dışa Aktarma / İçe Aktarma
+// ---------------------------------------------------------------------------
+
+const BACKUP_KEYS = ['bt_transactions', 'bt_prices', 'bt_watchlist'];
+
+Object.assign(BorsaStore, {
+  // Y1. Yedek nesnesi oluştur
+  createBackup() {
+    const transactions = this.getTransactions();
+    return {
+      app: 'borsa-takip',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      counts: {
+        transactions: transactions.length,
+        watchlist: this.getWatchlist().length
+      },
+      data: {
+        bt_transactions: transactions,
+        bt_prices: this.getPrices(),
+        bt_watchlist: this.getWatchlist()
+      }
+    };
+  },
+
+  // Y2. Yedek dosya adı (borsa-takip-yedek-2026-09-20.json)
+  backupFileName() {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return `borsa-takip-yedek-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.json`;
+  },
+
+  // Y3. Yedeği doğrula - hatalıysa açıklayıcı bir mesajla Error fırlatır
+  validateBackup(raw) {
+    let parsed;
+    try {
+      parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    } catch (e) {
+      throw new Error('Dosya okunamadı. Geçerli bir JSON yedek dosyası seçtiğinizden emin olun.');
+    }
+
+    if (!parsed || typeof parsed !== 'object') {
+      throw new Error('Yedek dosyası boş veya bozuk görünüyor.');
+    }
+    if (parsed.app && parsed.app !== 'borsa-takip') {
+      throw new Error('Bu yedek dosyası Borsa Takip uygulamasına ait değil.');
+    }
+
+    const data = parsed.data && typeof parsed.data === 'object' ? parsed.data : parsed;
+
+    if (!Array.isArray(data.bt_transactions)) {
+      throw new Error('Yedekte işlem listesi (bt_transactions) bulunamadı.');
+    }
+    if (data.bt_watchlist !== undefined && !Array.isArray(data.bt_watchlist)) {
+      throw new Error('Yedekteki takip listesi bozuk.');
+    }
+    if (data.bt_prices !== undefined && (typeof data.bt_prices !== 'object' || data.bt_prices === null || Array.isArray(data.bt_prices))) {
+      throw new Error('Yedekteki fiyat listesi bozuk.');
+    }
+
+    // İşlem kayıtlarını temizle / normalize et
+    const transactions = data.bt_transactions.map((tx, i) => {
+      if (!tx || typeof tx !== 'object') {
+        throw new Error(`${i + 1}. işlem kaydı bozuk.`);
+      }
+      const symbol = String(tx.symbol || '').toUpperCase().trim();
+      const type = String(tx.type || '').toUpperCase();
+      const quantity = parseFloat(tx.quantity);
+      const price = parseFloat(tx.price);
+
+      if (!symbol) throw new Error(`${i + 1}. işlem kaydında hisse kodu yok.`);
+      if (!['BUY', 'SELL', 'INITIAL'].includes(type)) {
+        throw new Error(`${i + 1}. işlem kaydında geçersiz işlem tipi: ${tx.type}`);
+      }
+      if (!isFinite(quantity) || quantity <= 0) throw new Error(`${i + 1}. işlem kaydında geçersiz adet.`);
+      if (!isFinite(price) || price < 0) throw new Error(`${i + 1}. işlem kaydında geçersiz fiyat.`);
+
+      return {
+        id: tx.id || 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        symbol: symbol,
+        type: type,
+        quantity: quantity,
+        price: price,
+        date: tx.date || new Date().toISOString().split('T')[0]
+      };
+    });
+
+    return {
+      exportedAt: parsed.exportedAt || null,
+      transactions: transactions,
+      prices: data.bt_prices || null,
+      watchlist: Array.isArray(data.bt_watchlist)
+        ? data.bt_watchlist.map(s => String(s).toUpperCase().trim()).filter(Boolean)
+        : null
+    };
+  },
+
+  // Y4. Yedeği geri yükle. mode: 'replace' (üzerine yaz) | 'merge' (birleştir)
+  restoreBackup(raw, mode = 'replace') {
+    const backup = this.validateBackup(raw);
+
+    // Geri yükleme öncesi mevcut durumun güvenlik kopyası (hata olursa geri alınır)
+    const snapshot = {};
+    BACKUP_KEYS.forEach(k => { snapshot[k] = localStorage.getItem(k); });
+
+    try {
+      let transactions;
+      let addedCount;
+
+      if (mode === 'merge') {
+        const current = this.getTransactions();
+        // Aynı işlemin iki kez eklenmemesi için id + içerik imzası kullanılır
+        const signature = (tx) => `${tx.symbol}|${tx.type}|${tx.quantity}|${tx.price}|${tx.date}`;
+        const existingIds = new Set(current.map(tx => tx.id));
+        const existingSignatures = new Set(current.map(signature));
+
+        const incoming = backup.transactions.filter(tx =>
+          !existingIds.has(tx.id) && !existingSignatures.has(signature(tx))
+        );
+        transactions = current.concat(incoming);
+        addedCount = incoming.length;
+      } else {
+        transactions = backup.transactions;
+        addedCount = transactions.length;
+      }
+
+      localStorage.setItem('bt_transactions', JSON.stringify(transactions));
+
+      if (backup.watchlist) {
+        const watchlist = mode === 'merge'
+          ? Array.from(new Set(this.getWatchlist().concat(backup.watchlist)))
+          : backup.watchlist;
+        localStorage.setItem('bt_watchlist', JSON.stringify(watchlist));
+      }
+
+      if (backup.prices) {
+        // Fiyatlar canlı veriden tazelenebildiği için her zaman birleştirilir;
+        // yedekteki isim bilgisi korunur, mevcut fiyat bilgisi ezilmez.
+        const prices = this.getPrices();
+        for (const sym in backup.prices) {
+          const incoming = backup.prices[sym];
+          if (!incoming || typeof incoming !== 'object') continue;
+          if (!prices[sym]) {
+            prices[sym] = {
+              name: incoming.name || `${sym} Hisse Senedi`,
+              price: parseFloat(incoming.price) || 0,
+              prevPrice: parseFloat(incoming.prevPrice !== undefined ? incoming.prevPrice : incoming.price) || 0
+            };
+          } else if (!prices[sym].name && incoming.name) {
+            prices[sym].name = incoming.name;
+          }
+        }
+        localStorage.setItem('bt_prices', JSON.stringify(prices));
+      }
+
+      return {
+        mode: mode,
+        totalInBackup: backup.transactions.length,
+        added: addedCount,
+        exportedAt: backup.exportedAt
+      };
+    } catch (err) {
+      // Yarım kalmış bir geri yükleme bırakmamak için eski duruma dön
+      BACKUP_KEYS.forEach(k => {
+        if (snapshot[k] === null) {
+          localStorage.removeItem(k);
+        } else {
+          localStorage.setItem(k, snapshot[k]);
+        }
+      });
+      throw err;
+    }
+  }
+});

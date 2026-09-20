@@ -655,3 +655,63 @@ input:focus, select:focus {
 #watchlist-suggestions div:hover {
   background: rgba(99, 102, 241, 0.15) !important;
 }
+
+/* --- Yedekleme Kartı --- */
+.backup-stats {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.backup-stats span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 6px 12px;
+}
+
+.backup-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.backup-btn {
+  padding: 13px;
+  font-size: 14px;
+  border-radius: 14px;
+  box-shadow: none;
+}
+
+.backup-btn-ghost {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+  border: 1px solid var(--panel-border);
+}
+
+.backup-message {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
+}
+
+.backup-message.success {
+  color: var(--profit-color);
+  background: var(--profit-bg);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.backup-message.error {
+  color: var(--loss-color);
+  background: var(--loss-bg);
+  border-color: rgba(244, 63, 94, 0.25);
+}

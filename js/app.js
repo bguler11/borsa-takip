@@ -1,6 +1,7 @@
 // Borsa Takip PWA - Arayüz ve Kontrol Katmanı (app.js)
 
-window.showConfirmModal = function(message, onConfirm) {
+window.showConfirmModal = function(message, onConfirm, options) {
+  options = options || {};
   const overlay = document.getElementById('confirm-modal-overlay');
   const modal = document.getElementById('confirm-modal');
   const msgEl = document.getElementById('confirm-modal-message');
@@ -8,11 +9,13 @@ window.showConfirmModal = function(message, onConfirm) {
   const btnCancel = document.getElementById('btn-confirm-cancel');
 
   if (!modal || !overlay) {
-    if (confirm(message)) onConfirm();
+    if (confirm(message)) { onConfirm(); } else if (options.onCancel) { options.onCancel(); }
     return;
   }
   
   msgEl.innerText = message;
+  if (btnOk) btnOk.innerText = options.okText || "Evet, Sil";
+  if (btnCancel) btnCancel.innerText = options.cancelText || "İptal";
   overlay.classList.add('active');
   modal.style.display = 'flex';
   
@@ -22,6 +25,7 @@ window.showConfirmModal = function(message, onConfirm) {
   modal.style.opacity = '1';
   modal.style.transform = 'translate(-50%, -50%) scale(1)';
 
+  let settled = false;
   const closeHandler = () => {
     modal.style.opacity = '0';
     modal.style.transform = 'translate(-50%, -50%) scale(0.95)';
@@ -30,9 +34,11 @@ window.showConfirmModal = function(message, onConfirm) {
       overlay.classList.remove('active');
     }, 300);
     cleanUp();
+    if (!settled) { settled = true; if (options.onCancel) options.onCancel(); }
   };
 
   const confirmHandler = () => {
+    settled = true;
     closeHandler();
     onConfirm();
   };
@@ -822,6 +828,7 @@ function initializeApp() {
   const historyLog = document.getElementById('history-log');
 
   function renderHistory() {
+    updateBackupStats();
     const data = BorsaStore.getPortfolio();
     
     // Gerçekleşen Kâr/Zarar
@@ -963,6 +970,194 @@ function initializeApp() {
       });
     }
   }
+
+  // --- YEDEKLEME (BACKUP) ---
+  const backupMessage = document.getElementById('backup-message');
+
+  function showBackupMessage(text, type) {
+    if (!backupMessage) {
+      if (type === 'error') window.showToast(text, 'error');
+      return;
+    }
+    backupMessage.textContent = text;
+    backupMessage.className = 'backup-message' + (type ? ' ' + type : '');
+    backupMessage.style.display = 'block';
+  }
+
+  function updateBackupStats() {
+    const statTx = document.getElementById('backup-stat-tx');
+    const statWatch = document.getElementById('backup-stat-watch');
+    if (statTx) statTx.textContent = `${BorsaStore.getTransactions().length} işlem kayıtlı`;
+    if (statWatch) statWatch.textContent = `${BorsaStore.getWatchlist().length} takip edilen hisse`;
+  }
+
+  // Yedeği indir: mobilde önce paylaşım menüsü (Dosyalar/Drive/WhatsApp), olmazsa indirme
+  async function downloadBackup() {
+    const backup = BorsaStore.createBackup();
+    const json = JSON.stringify(backup, null, 2);
+    const fileName = BorsaStore.backupFileName();
+
+    // 1) Web Share API (iOS/Android PWA'da en güvenilir yol)
+    try {
+      if (navigator.canShare && typeof File === 'function') {
+        const file = new File([json], fileName, { type: 'application/json' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'Borsa Takip Yedeği' });
+          showBackupMessage(`Yedek paylaşıldı: ${backup.counts.transactions} işlem, ${backup.counts.watchlist} takip hissesi.`, 'success');
+          return;
+        }
+      }
+    } catch (err) {
+      // Kullanıcı paylaşım ekranını kapattıysa sessizce geç
+      if (err && err.name === 'AbortError') {
+        showBackupMessage('Yedekleme iptal edildi.', null);
+        return;
+      }
+      console.warn('Paylaşım başarısız, indirmeye geçiliyor:', err);
+    }
+
+    // 2) Klasik indirme
+    try {
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showBackupMessage(`Yedek indirildi: ${fileName} (${backup.counts.transactions} işlem).`, 'success');
+      window.showToast('Yedek dosyası oluşturuldu.', 'success');
+    } catch (err) {
+      console.error('Yedek indirme hatası:', err);
+      showBackupMessage('Dosya indirilemedi. "Panoya Kopyala" seçeneğini kullanabilirsiniz.', 'error');
+    }
+  }
+
+  async function copyBackupToClipboard() {
+    const backup = BorsaStore.createBackup();
+    const json = JSON.stringify(backup);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(json);
+      } else {
+        // Eski tarayıcılar için yedek yöntem
+        const ta = document.createElement('textarea');
+        ta.value = json;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (!ok) throw new Error('execCommand başarısız');
+      }
+      showBackupMessage(`Yedek panoya kopyalandı (${backup.counts.transactions} işlem). Notlar uygulamanıza yapıştırarak saklayabilirsiniz.`, 'success');
+      window.showToast('Yedek panoya kopyalandı.', 'success');
+    } catch (err) {
+      console.error('Panoya kopyalama hatası:', err);
+      showBackupMessage('Panoya kopyalanamadı. Lütfen "Yedek Al (Dosya)" seçeneğini deneyin.', 'error');
+    }
+  }
+
+  // Geri yükleme: önce özet onayı, sonra "üzerine yaz / birleştir" seçimi
+  function applyRestore(text) {
+    let preview;
+    try {
+      preview = BorsaStore.validateBackup(text);
+    } catch (err) {
+      showBackupMessage('Yedek geçersiz: ' + err.message, 'error');
+      window.showToast('Yedek dosyası okunamadı.', 'error');
+      return;
+    }
+
+    const dateText = preview.exportedAt
+      ? new Date(preview.exportedAt).toLocaleString('tr-TR')
+      : 'tarih bilgisi yok';
+    const current = BorsaStore.getTransactions().length;
+
+    const runRestore = (mode) => {
+      try {
+        const result = BorsaStore.restoreBackup(text, mode);
+        populateDatalist();
+        renderPortfolio();
+        renderHistory();
+        renderWatchlist();
+        updateBackupStats();
+
+        const summary = mode === 'replace'
+          ? `${result.added} işlem geri yüklendi (mevcut veriler değiştirildi).`
+          : `${result.added} yeni işlem eklendi (${result.totalInBackup - result.added} kayıt zaten mevcuttu).`;
+        showBackupMessage('Geri yükleme tamamlandı. ' + summary, 'success');
+        window.showToast('Yedek geri yüklendi!', 'success');
+      } catch (err) {
+        console.error('Geri yükleme hatası:', err);
+        showBackupMessage('Geri yükleme başarısız: ' + err.message + ' Verileriniz değiştirilmedi.', 'error');
+        window.showToast('Geri yükleme başarısız oldu.', 'error');
+      }
+    };
+
+    // İkinci adım: mevcut verilerin üzerine mi yazılsın, yoksa birleştirilsin mi?
+    const askMode = () => {
+      window.showConfirmModal(
+        `Yedek nasıl yüklensin?
+
+ÜZERİNE YAZ: Mevcut işlemler silinir, yedektekiler gelir.
+BİRLEŞTİR: Yedek mevcut işlemlere eklenir, tekrar edenler atlanır.`,
+        () => runRestore('replace'),
+        {
+          okText: 'Üzerine Yaz',
+          cancelText: 'Birleştir',
+          onCancel: () => runRestore('merge')
+        }
+      );
+    };
+
+    window.showConfirmModal(
+      `Yedek dosyası okundu.
+
+${preview.transactions.length} işlem · Yedek tarihi: ${dateText}
+Cihazınızdaki mevcut kayıt: ${current} işlem
+
+Geri yüklemeye devam edilsin mi?`,
+      () => setTimeout(askMode, 350),
+      {
+        okText: 'Devam Et',
+        cancelText: 'Vazgeç',
+        onCancel: () => showBackupMessage('Geri yükleme iptal edildi.', null)
+      }
+    );
+  }
+  const btnBackupExport = document.getElementById('btn-backup-export');
+  if (btnBackupExport) {
+    btnBackupExport.addEventListener('click', () => { downloadBackup(); });
+  }
+
+  const btnBackupCopy = document.getElementById('btn-backup-copy');
+  if (btnBackupCopy) {
+    btnBackupCopy.addEventListener('click', () => { copyBackupToClipboard(); });
+  }
+
+  const btnBackupImport = document.getElementById('btn-backup-import');
+  const inputBackupFile = document.getElementById('input-backup-file');
+  if (btnBackupImport && inputBackupFile) {
+    btnBackupImport.addEventListener('click', () => {
+      inputBackupFile.value = '';
+      inputBackupFile.click();
+    });
+
+    inputBackupFile.addEventListener('change', () => {
+      const file = inputBackupFile.files && inputBackupFile.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => applyRestore(String(reader.result || ''));
+      reader.onerror = () => showBackupMessage('Dosya okunamadı. Lütfen tekrar deneyin.', 'error');
+      reader.readAsText(file);
+    });
+  }
+
+  updateBackupStats();
 
   // --- TÜM PORTFÖYÜ SIFIRLA BUTONU ---
   const btnResetPortfolio = document.getElementById('btn-reset-portfolio');

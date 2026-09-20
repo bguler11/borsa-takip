@@ -163,6 +163,29 @@
         <!-- Dynamically loaded chronological log -->
       </div>
       
+      <!-- Yedekleme (Backup) Kartı -->
+      <div class="card backup-card" style="margin-top: 24px;">
+        <h2 class="section-title" style="margin-top: 0;">Yedekleme</h2>
+        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+          Verileriniz yalnızca bu cihazda saklanır. Tarayıcı verilerini temizlerseniz kaybolur;
+          düzenli olarak yedek almanız önerilir.
+        </p>
+
+        <div class="backup-stats" id="backup-stats">
+          <span id="backup-stat-tx">0 işlem</span>
+          <span id="backup-stat-watch">0 takip</span>
+        </div>
+
+        <div class="backup-actions">
+          <button type="button" id="btn-backup-export" class="btn-primary backup-btn">📤 Yedek Al (Dosya)</button>
+          <button type="button" id="btn-backup-copy" class="btn-primary backup-btn backup-btn-ghost">📋 Panoya Kopyala</button>
+          <button type="button" id="btn-backup-import" class="btn-primary backup-btn backup-btn-ghost">📥 Yedeği Geri Yükle</button>
+        </div>
+
+        <input type="file" id="input-backup-file" accept="application/json,.json,.txt" style="display: none;">
+        <div id="backup-message" class="backup-message" style="display: none;"></div>
+      </div>
+
       <!-- Master Reset Portfolio Button -->
       <button id="btn-reset-portfolio" class="btn-primary" style="margin-top: 30px; background: rgba(244, 63, 94, 0.08); color: var(--loss-color); border: 1px solid rgba(244, 63, 94, 0.2); box-shadow: none;">TÜM PORTFÖYÜ SIFIRLA</button>
     </section>
