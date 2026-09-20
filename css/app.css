@@ -715,3 +715,96 @@ input:focus, select:focus {
   background: var(--loss-bg);
   border-color: rgba(244, 63, 94, 0.25);
 }
+
+/* ---------------------------------------------------------------------------
+   ŞİRKET HABERLERİ (KAP BİLDİRİMLERİ)
+   --------------------------------------------------------------------------- */
+/* Sembol seridi yatay kayar; kaydirma cubugu gorsel gurultu yaratmasin */
+#news-symbol-chips {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+#news-symbol-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.news-chip {
+  flex: 0 0 auto;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.news-chip:active {
+  transform: scale(0.96);
+}
+
+.news-chip.active {
+  background: var(--accent-color, #6366f1);
+  border-color: transparent;
+  color: #fff;
+}
+
+.btn-secondary {
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-secondary:active {
+  transform: scale(0.97);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.news-item {
+  display: block;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.02);
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.news-item:active {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.news-item-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.45;
+  margin-bottom: 8px;
+}
+
+.news-item-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.news-item-source {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+}

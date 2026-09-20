@@ -1,7 +1,8 @@
-const CACHE_NAME = 'borsa-takip-v8';
+const CACHE_NAME = 'borsa-takip-v9';
 const ASSETS = [
   'index.html',
   'css/app.css',
+  'js/mynet-slugs.js',
   'js/store.js',
   'js/app.js',
   'manifest.json'
@@ -33,6 +34,13 @@ self.addEventListener('activate', (e) => {
 
 // Fetch Event: Cache first, fallback to network
 self.addEventListener('fetch', (e) => {
+  // Sadece kendi origin'imizdeki GET isteklerini cache'le.
+  // Haber kaynagi (Mynet) gibi cross-origin istekler cache-first mantiginda
+  // kalici olarak saklanip bayat veri dondururdu; onlari aga birakiyoruz.
+  if (e.request.method !== 'GET' || new URL(e.request.url).origin !== self.location.origin) {
+    return;
+  }
+
   e.respondWith(
     caches.match(e.request).then((cachedResponse) => {
       if (cachedResponse) {

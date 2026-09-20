@@ -129,6 +129,8 @@ function initializeApp() {
         renderHistory();
       } else if (targetScreenId === 'screen-watchlist') {
         renderWatchlist();
+      } else if (targetScreenId === 'screen-news') {
+        renderNews();
       }
     });
   });
@@ -1238,6 +1240,142 @@ Geri yüklemeye devam edilsin mi?`,
           btnRefresh.style.pointerEvents = 'auto';
         }, 100);
       }
+    });
+  }
+
+  // --- ŞİRKET HABERLERİ EKRANI ---
+  const newsChipsEl = document.getElementById('news-symbol-chips');
+  const newsListEl = document.getElementById('news-list');
+  const newsUpdatedEl = document.getElementById('news-updated-at');
+  const btnRefreshNews = document.getElementById('btn-refresh-news');
+  let activeNewsSymbol = null;
+
+  // Portföy + takip listesi sembolleri (tekrarsız)
+  function getNewsSymbols() {
+    const portfolioSymbols = BorsaStore.getPortfolio().holdings.map(h => h.symbol);
+    const watchlist = BorsaStore.getWatchlist();
+    return [...new Set([...portfolioSymbols, ...watchlist])].sort();
+  }
+
+  function renderNewsEmpty(icon, text) {
+    newsListEl.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.className = 'empty-state';
+    const iconEl = document.createElement('div');
+    iconEl.className = 'empty-state-icon';
+    iconEl.innerText = icon;
+    const textEl = document.createElement('div');
+    textEl.className = 'empty-state-text';
+    textEl.innerText = text;
+    wrap.appendChild(iconEl);
+    wrap.appendChild(textEl);
+    newsListEl.appendChild(wrap);
+  }
+
+  function renderNewsChips(symbols) {
+    newsChipsEl.innerHTML = '';
+    symbols.forEach(symbol => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'news-chip' + (symbol === activeNewsSymbol ? ' active' : '');
+      chip.innerText = symbol;
+      chip.addEventListener('click', () => {
+        if (symbol === activeNewsSymbol) return;
+        activeNewsSymbol = symbol;
+        renderNewsChips(symbols);
+        loadNewsFor(symbol, false);
+      });
+      newsChipsEl.appendChild(chip);
+    });
+  }
+
+  function formatFetchedAt(timestamp, isStale) {
+    const d = new Date(timestamp);
+    const time = d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    return (isStale ? 'Önbellekten' : 'Güncellendi') + ': ' + time;
+  }
+
+  async function loadNewsFor(symbol, force) {
+    if (!newsListEl) return;
+    newsListEl.innerHTML = '';
+    newsUpdatedEl.innerText = 'Yükleniyor...';
+    if (btnRefreshNews) btnRefreshNews.disabled = true;
+
+    try {
+      const result = await BorsaStore.fetchCompanyNews(symbol, { force: force });
+
+      // Kullanıcı bekleme sırasında başka sembole geçtiyse sonucu yazma
+      if (symbol !== activeNewsSymbol) return;
+
+      newsUpdatedEl.innerText = formatFetchedAt(result.fetchedAt, result.isStale);
+
+      if (!result.items || result.items.length === 0) {
+        renderNewsEmpty('📭', symbol + ' için güncel bir KAP bildirimi bulunamadı.');
+        return;
+      }
+
+      newsListEl.innerHTML = '';
+      result.items.forEach(item => {
+        const a = document.createElement('a');
+        a.className = 'news-item';
+        a.href = item.url;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+
+        const title = document.createElement('div');
+        title.className = 'news-item-title';
+        title.innerText = item.title;
+        // Kısaltılmış başlığın tam hali ipucu olarak dursun
+        if (item.rawTitle) a.title = item.rawTitle;
+
+        const meta = document.createElement('div');
+        meta.className = 'news-item-meta';
+        const date = document.createElement('span');
+        date.innerText = item.date || '';
+        const source = document.createElement('span');
+        source.className = 'news-item-source';
+        source.innerText = 'KAP';
+        meta.appendChild(date);
+        meta.appendChild(source);
+
+        a.appendChild(title);
+        a.appendChild(meta);
+        newsListEl.appendChild(a);
+      });
+    } catch (err) {
+      if (symbol !== activeNewsSymbol) return;
+      newsUpdatedEl.innerText = '';
+      const isNoSource = err && err.code === 'NO_SOURCE';
+      renderNewsEmpty(isNoSource ? '🔍' : '⚠️', err.message || 'Haberler yüklenemedi.');
+    } finally {
+      if (symbol === activeNewsSymbol && btnRefreshNews) btnRefreshNews.disabled = false;
+    }
+  }
+
+  function renderNews() {
+    if (!newsChipsEl || !newsListEl) return;
+
+    const symbols = getNewsSymbols();
+    if (symbols.length === 0) {
+      newsChipsEl.innerHTML = '';
+      newsUpdatedEl.innerText = '';
+      activeNewsSymbol = null;
+      renderNewsEmpty('📰', 'Haberleri görmek için portföyünüze işlem ekleyin veya takip listenize hisse ekleyin.');
+      return;
+    }
+
+    // Seçili sembol listeden çıkmışsa başa dön
+    if (!activeNewsSymbol || !symbols.includes(activeNewsSymbol)) {
+      activeNewsSymbol = symbols[0];
+    }
+
+    renderNewsChips(symbols);
+    loadNewsFor(activeNewsSymbol, false);
+  }
+
+  if (btnRefreshNews) {
+    btnRefreshNews.addEventListener('click', () => {
+      if (activeNewsSymbol) loadNewsFor(activeNewsSymbol, true);
     });
   }
 

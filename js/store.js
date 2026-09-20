@@ -440,6 +440,105 @@ const BorsaStore = {
         netProfit: totalUnrealizedProfit + totalRealizedProfit
       }
     };
+  },
+
+  // 8. Şirket Haberleri (KAP bildirimleri - Mynet Finans üzerinden)
+  // Mynet sayfaları "access-control-allow-origin: *" döndürdüğü için
+  // tarayıcıdan doğrudan çekilebiliyor; ayrı bir sunucuya gerek yok.
+  NEWS_CACHE_KEY: 'bt_news_cache',
+  NEWS_TTL_MS: 15 * 60 * 1000, // 15 dk - KAP verisi zaten anlık değil
+
+  getCachedNews(symbol) {
+    try {
+      const cache = JSON.parse(localStorage.getItem(this.NEWS_CACHE_KEY)) || {};
+      const entry = cache[symbol];
+      if (!entry) return null;
+      const isStale = (Date.now() - entry.fetchedAt) > this.NEWS_TTL_MS;
+      return { items: entry.items, fetchedAt: entry.fetchedAt, isStale: isStale };
+    } catch (err) {
+      return null;
+    }
+  },
+
+  setCachedNews(symbol, items) {
+    try {
+      const cache = JSON.parse(localStorage.getItem(this.NEWS_CACHE_KEY)) || {};
+      cache[symbol] = { items: items, fetchedAt: Date.now() };
+      localStorage.setItem(this.NEWS_CACHE_KEY, JSON.stringify(cache));
+    } catch (err) {
+      // Kota dolduysa cache'i sıfırla, haber akışı yine de çalışsın
+      try { localStorage.removeItem(this.NEWS_CACHE_KEY); } catch (e) { /* yoksay */ }
+    }
+  },
+
+  // KAP başlıkları "***GARAN ** TGB*** TÜRKİYE GARANTİ BANKASI A.Ş. (Konu)"
+  // biçiminde geliyor. Baştaki kod bloğunu ve şirket ünvanını atıp
+  // okunabilir bir başlık bırakıyoruz.
+  cleanNewsTitle(rawTitle) {
+    let title = (rawTitle || '').replace(/\s+/g, ' ').trim();
+    title = title.replace(/^\*+[^*]*\*+\s*/, '').trim();
+
+    // Ünvandan sonraki ilk parantez bloğu asıl konudur
+    const match = title.match(/^(.*?)\s*\((.+)\)\s*$/);
+    if (match && match[2]) {
+      const subject = match[2].trim();
+      if (subject.length > 2) return subject;
+    }
+    return title || 'Başlıksız bildirim';
+  },
+
+  async fetchCompanyNews(symbol, options) {
+    const opts = options || {};
+    const sym = String(symbol || '').toUpperCase();
+    const slugs = window.MYNET_SLUGS || {};
+    const slug = slugs[sym];
+
+    if (!slug) {
+      const err = new Error(`${sym} için haber kaynağı bulunamadı.`);
+      err.code = 'NO_SOURCE';
+      throw err;
+    }
+
+    if (!opts.force) {
+      const cached = this.getCachedNews(sym);
+      if (cached && !cached.isStale) return cached;
+    }
+
+    const url = `https://finans.mynet.com/borsa/hisseler/${slug}/`;
+    let html;
+    try {
+      const response = await fetch(url, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Kaynak yanıt vermedi (${response.status})`);
+      html = await response.text();
+    } catch (err) {
+      // Çevrimdışıysak veya kaynak erişilemezse bayat cache'i göster
+      const cached = this.getCachedNews(sym);
+      if (cached) return cached;
+      const netErr = new Error('Haberlere ulaşılamadı. İnternet bağlantınızı kontrol edin.');
+      netErr.code = 'NETWORK';
+      throw netErr;
+    }
+
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const anchors = doc.querySelectorAll('#new-list-ul li a');
+
+    const items = [];
+    anchors.forEach(a => {
+      const titleEl = a.querySelector('em.title');
+      const dateEl = a.querySelector('span.date');
+      const rawTitle = (titleEl ? titleEl.textContent : a.getAttribute('title')) || '';
+      const href = a.getAttribute('href') || '';
+      if (!href) return;
+      items.push({
+        title: this.cleanNewsTitle(rawTitle),
+        rawTitle: rawTitle.replace(/\s+/g, ' ').trim(),
+        date: dateEl ? dateEl.textContent.trim() : '',
+        url: href
+      });
+    });
+
+    this.setCachedNews(sym, items);
+    return { items: items, fetchedAt: Date.now(), isStale: false };
   }
 };
 

@@ -212,6 +212,28 @@
       </div>
     </section>
 
+    <section id="screen-news" class="screen">
+      <div class="card">
+        <h2 class="section-title">Şirket Haberleri</h2>
+        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">
+          Portföyünüzdeki ve takip listenizdeki hisselerin KAP bildirimleri.
+        </p>
+
+        <div id="news-symbol-chips" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 12px; margin-bottom: 16px; -webkit-overflow-scrolling: touch;">
+          <!-- Sembol sekmeleri dinamik olarak doldurulur -->
+        </div>
+
+        <div id="news-status" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px;">
+          <span id="news-updated-at" style="font-size: 12px; color: var(--text-muted);"></span>
+          <button id="btn-refresh-news" class="btn-secondary" style="padding: 6px 12px; border-radius: 10px; font-size: 12px;">Yenile</button>
+        </div>
+
+        <div id="news-list" style="display: flex; flex-direction: column; gap: 10px;">
+          <!-- Haberler dinamik olarak doldurulur -->
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- Bottom Navigation Tab Bar -->
@@ -231,6 +253,10 @@
     <button class="tab-item" data-target="screen-watchlist">
       <span class="tab-icon">📈</span>
       <span class="tab-label">Takip Listesi</span>
+    </button>
+    <button class="tab-item" data-target="screen-news">
+      <span class="tab-icon">📰</span>
+      <span class="tab-label">Haberler</span>
     </button>
   </nav>
 
@@ -306,6 +332,7 @@
   <div id="toast-container" style="position: fixed; top: calc(var(--safe-area-top) + 20px); left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; width: 90%; max-width: 400px;"></div>
 
   <!-- Loading Scripts -->
+  <script src="js/mynet-slugs.js"></script>
   <script src="js/store.js"></script>
   <script src="js/app.js"></script>
   
