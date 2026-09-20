@@ -1,5 +1,29 @@
 // Borsa Takip PWA - Arayüz ve Kontrol Katmanı (app.js)
 
+// Emoji yerine inline stroke SVG: platformlar arasi tutarli gorunur,
+// currentColor ile tema rengini alir ve boyutu tipografiyle olceklenir.
+const ICON_PATHS = {
+  portfolio: '<rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>',
+  history: '<circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline>',
+  news: '<rect x="3" y="5" width="18" height="14" rx="2"></rect><line x1="7" y1="9" x2="13" y2="9"></line><line x1="7" y1="13" x2="17" y2="13"></line>',
+  inbox: '<path d="M4 13h4l2 3h4l2-3h4"></path><path d="M5.5 5.5h13l2.5 7.5v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5z"></path>',
+  search: '<circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line>',
+  alert: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>',
+  check: '<polyline points="20 6 9 17 4 12"></polyline>',
+  close: '<line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line>',
+  grip: '<line x1="4" y1="9" x2="20" y2="9"></line><line x1="4" y1="15" x2="20" y2="15"></line>',
+  arrowRight: '<line x1="4" y1="12" x2="18" y2="12"></line><polyline points="13 7 18 12 13 17"></polyline>'
+};
+
+window.svgIcon = function(name, size) {
+  const path = ICON_PATHS[name];
+  if (!path) return '';
+  const px = size || 20;
+  return '<svg width="' + px + '" height="' + px + '" viewBox="0 0 24 24" fill="none" ' +
+    'stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" ' +
+    'aria-hidden="true">' + path + '</svg>';
+};
+
 window.showConfirmModal = function(message, onConfirm, options) {
   options = options || {};
   const overlay = document.getElementById('confirm-modal-overlay');
@@ -64,7 +88,7 @@ window.showToast = function(message, type = 'success') {
   const toast = document.createElement('div');
   const isSuccess = type === 'success';
   const bgColor = isSuccess ? 'var(--profit-color)' : 'var(--loss-color)';
-  const icon = isSuccess ? '✅' : '⚠️';
+  const icon = window.svgIcon(isSuccess ? 'check' : 'alert', 18);
   
   toast.style.background = 'linear-gradient(135deg, rgba(22, 24, 33, 0.98) 0%, rgba(18, 20, 28, 0.98) 100%)';
   toast.style.borderLeft = `4px solid ${bgColor}`;
@@ -82,7 +106,7 @@ window.showToast = function(message, type = 'success') {
   toast.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
   toast.style.backdropFilter = 'blur(10px)';
   
-  toast.innerHTML = `<span style="font-size: 18px;">${icon}</span> <span style="line-height: 1.4;">${message}</span>`;
+  toast.innerHTML = `<span style="display: flex; color: ${bgColor};">${icon}</span> <span style="line-height: 1.4;">${message}</span>`;
   
   container.appendChild(toast);
   
@@ -427,7 +451,7 @@ function initializeApp() {
       
       item.innerHTML = `
         <!-- Drag Handle for Mobile & Desktop Reordering -->
-        <span class="drag-handle" style="cursor: grab; padding: 10px 14px 10px 0; color: var(--text-muted); font-size: 16px; user-select: none;">☰</span>
+        <span class="drag-handle" style="cursor: grab; padding: 10px 14px 10px 0; color: var(--text-muted); user-select: none; display: inline-flex; align-items: center;">${window.svgIcon('grip', 16)}</span>
         
         <div class="stock-info" style="flex: 2;">
           <div style="display:flex; align-items:center; gap:8px;">
@@ -436,7 +460,7 @@ function initializeApp() {
           </div>
           <span class="stock-name">${stock.name}</span>
           <span style="font-size: 11px; color: var(--accent-color); margin-top: 2px;">
-            Alım/Satım Yap ➔
+            Alım/Satım Yap ${window.svgIcon('arrowRight', 12)}
           </span>
         </div>
         
@@ -445,7 +469,7 @@ function initializeApp() {
             ${stock.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL
           </span>
           
-          <button class="close-sheet-btn remove-watchlist-btn" aria-label="Takip listesinden çıkar" style="width: 28px; height: 28px; font-size: 13px; color: var(--loss-color); background: rgba(244,63,94,0.05); border: 1px solid rgba(244,63,94,0.1);">✕</button>
+          <button class="close-sheet-btn remove-watchlist-btn" aria-label="Takip listesinden çıkar" style="width: 28px; height: 28px; font-size: 13px; color: var(--loss-color); background: rgba(244,63,94,0.05); border: 1px solid rgba(244,63,94,0.1); display: inline-flex; align-items: center; justify-content: center;">${window.svgIcon('close', 14)}</button>
         </div>
       `;
 
@@ -484,7 +508,7 @@ function initializeApp() {
         saveWatchlistOrder();
       });
 
-      // Mobil Touch-Drag Kaydırma Olayları (☰ butonu ile)
+      // Mobil Touch-Drag Kaydırma Olayları (tutamac ile)
       const dragHandle = item.querySelector('.drag-handle');
       dragHandle.addEventListener('touchstart', (e) => {
         item.classList.add('dragging');
@@ -554,7 +578,7 @@ function initializeApp() {
     if (data.holdings.length === 0) {
       holdingsList.innerHTML = `
         <div class="empty-state">
-          <div class="empty-state-icon">💼</div>
+          <div class="empty-state-icon">${window.svgIcon('portfolio', 44)}</div>
           <div class="empty-state-text">Portföyünüz henüz boş. "Ekle" sekmesinden ilk hisse alımınızı kaydedebilirsiniz.</div>
         </div>
       `;
@@ -901,7 +925,7 @@ function initializeApp() {
       if (allTx.length === 0) {
         historyLog.innerHTML = `
           <div class="empty-state">
-            <div class="empty-state-icon">📜</div>
+            <div class="empty-state-icon">${window.svgIcon('history', 44)}</div>
             <div class="empty-state-text">Hareket geçmişi bulunamadı.</div>
           </div>
         `;
@@ -1263,7 +1287,7 @@ Geri yüklemeye devam edilsin mi?`,
     wrap.className = 'empty-state';
     const iconEl = document.createElement('div');
     iconEl.className = 'empty-state-icon';
-    iconEl.innerText = icon;
+    iconEl.innerHTML = window.svgIcon(icon, 44);
     const textEl = document.createElement('div');
     textEl.className = 'empty-state-text';
     textEl.innerText = text;
@@ -1310,7 +1334,7 @@ Geri yüklemeye devam edilsin mi?`,
       newsUpdatedEl.innerText = formatFetchedAt(result.fetchedAt, result.isStale);
 
       if (!result.items || result.items.length === 0) {
-        renderNewsEmpty('📭', symbol + ' için güncel bir KAP bildirimi bulunamadı.');
+        renderNewsEmpty('inbox', symbol + ' için güncel bir KAP bildirimi bulunamadı.');
         return;
       }
 
@@ -1346,7 +1370,7 @@ Geri yüklemeye devam edilsin mi?`,
       if (symbol !== activeNewsSymbol) return;
       newsUpdatedEl.innerText = '';
       const isNoSource = err && err.code === 'NO_SOURCE';
-      renderNewsEmpty(isNoSource ? '🔍' : '⚠️', err.message || 'Haberler yüklenemedi.');
+      renderNewsEmpty(isNoSource ? 'search' : 'alert', err.message || 'Haberler yüklenemedi.');
     } finally {
       if (symbol === activeNewsSymbol && btnRefreshNews) btnRefreshNews.disabled = false;
     }
@@ -1360,7 +1384,7 @@ Geri yüklemeye devam edilsin mi?`,
       newsChipsEl.innerHTML = '';
       newsUpdatedEl.innerText = '';
       activeNewsSymbol = null;
-      renderNewsEmpty('📰', 'Haberleri görmek için portföyünüze işlem ekleyin veya takip listenize hisse ekleyin.');
+      renderNewsEmpty('news', 'Haberleri görmek için portföyünüze işlem ekleyin veya takip listenize hisse ekleyin.');
       return;
     }
 

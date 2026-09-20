@@ -455,7 +455,10 @@ input:focus, select:focus {
 }
 
 .tab-icon {
-  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
 }
 
 .tab-label {
@@ -632,7 +635,8 @@ input:focus, select:focus {
 }
 
 .empty-state-icon {
-  font-size: 48px;
+  display: flex;
+  justify-content: center;
   margin-bottom: 16px;
   opacity: 0.5;
 }
